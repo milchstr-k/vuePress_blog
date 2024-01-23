@@ -1,15 +1,6 @@
----
-icon: pen-to-square
-date: 2023-07-04 12:52
-category:
-  - mysql
-tag:
-  - 锁
----
 
-# mysql锁
 
-> 📌 **关键词：** mysql、锁
+
 
 ## 数据库种类
 

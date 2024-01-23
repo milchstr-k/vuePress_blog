@@ -38,6 +38,24 @@ services:
       - KAFKA_CFG_CONTROLLER_QUORUM_VOYERS=1@localhost:9093
       - ALLOW_PLAINTEXT_LISTENER=yes  # 允许使用PLAINTEXT侦听器
 
+  redis_master:
+    image: redis:7.0.4
+    restart: always
+    hostname: redis
+    container_name: redis_master
+    privileged: true
+    ports:
+      - 6379:6379
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+        - /root/app/redis/data:/data
+        - /root/app/redis/conf/redis.conf:/etc/redis/redis.conf
+        - /root/app/redis/logs:/logs
+    command: ["redis-server","/etc/redis/redis.conf"]
+
+    
+
 ```
 
 配置参考：https://github.com/apache/kafka/blob/trunk/config/kraft/server.properties

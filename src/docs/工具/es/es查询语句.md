@@ -1,4 +1,3 @@
-
 ---
 icon: pen-to-square
 date: 2023-09-14 10:56
@@ -17,16 +16,17 @@ tag:
 在学习查询语法之前有必要带大家了解一下ES的分词器。因为这是题主认为ES搜索引擎最大的特点了，它查询速度之所以这么快也和这个有很大关系。但更重要的是，如果我们不了解ES会对你存储的索引文本或者查询query进行分词，后面的语法你将很难理解。
 
 对于我们存入ES索引（Index）中的各个字段（Term），ES内部都会有一个分词器对其进行分词，然后将这个分词结果存储起来，方便你未来的查询使用，这个分词器我们也可以直接很方便的调用，只要访问其_analyze即可：
-
+```
  POST http://ip:prot/_analyze
 {
   "analyzer": "standard",
   "text": "This is a test doc"
 }
+```
 这里需要指定一个分词器，ES默认的分词器是standard，不过只支持英文分词，如果你用它来对中文进行分词的话会直接按字拆分，有一些中文分词器可以下载使用，像ik或者jieba之类的，这里便不去介绍如何安装了，感兴趣的可以查阅相关文章。
 
 回到正题，我们用上述的分词请求返回的结果如下：
-
+```
 {
 	"tokens": [
 		{
@@ -66,6 +66,7 @@ tag:
 		}
 	]
 }
+```
 ​可以看到我们的句子就被分词器这样做好了分词，还有偏移量之类的信息。
 
 这里只是带大家看一下ES是如何做到分词的，我们平时查询的话自己是用不到分词的，这些分词都是在保存索引时ES自动分好存储起来的。
@@ -77,7 +78,7 @@ tag:
 ES的查询有一个很大的特点就是分词。所以大家在使用ES的过程中脑子要始终有这么一个意识，你要查找的text是通过分词器分过词的，所以你去匹配的实际上是一个个被分词的片段。而你搜索的query也有可能会被分词，match就是一种会将你搜索的query进行分词的查询方法。我们结合例子来看！
 
 比如我们要查询的索引结构如下：
-
+```
 {
     "_index": "textbook",
     "_id": "kIwXeYQB8iTYJNkI986Y",
@@ -87,12 +88,13 @@ ES的查询有一个很大的特点就是分词。所以大家在使用ES的过�
         "num": 20
     }
 }
+```
 _index代表索引名称，_id代表该条数据唯一id，_source代表该条数据具体的结构。
 
 这里我们通过bookName字段来查询。
 
 输入query语句如下：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -101,13 +103,14 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 该条语句代表用match方式搜索索引为textbook中bookName可以匹配到test的语句。因为：
 
 "bookName": "This is a test doc"
 原文被分词器分词后包含test这个词语，所以可以正常被匹配出来。
 
 这个例子比较简单，我们换个复杂一点的例子：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -116,6 +119,7 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 大家认为这个能否被匹配出来呢？
 
 原文中根本就没有my这个词语，那怎么被匹配出来？但实际上是可以匹配出来的。
@@ -132,7 +136,7 @@ If you don't success
 
 ### 2.2 match_phrase查询
 既然match的限制比较小，那如果我们需要这个限制更强一点用什么方式呢？match_phrase便是一个比较不错的选择。match_phrase和match一样也是会对你的搜索query进行分词，但是，不同的是它不是匹配到某一处分词的结果就算是匹配成功了，而是需要query中所有的词都匹配到，而且相对顺序还要一致，而且默认还是连续的，如此一来，限制就更多了。我们还是举个例子。比如还是刚刚的索引数据：
-
+```
 {
     "_index": "textbook",
     "_id": "kIwXeYQB8iTYJNkI986Y",
@@ -142,8 +146,9 @@ If you don't success
         "num": 20
     }
 }
+```
 如果我们还用刚刚的方式搜索：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -152,6 +157,7 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+
 这次是匹配不到结果的。那么怎样才能匹配到结果呢？只能是搜索原文中的连续字串：
 
 GET http://ip:prot/textbook/_search
@@ -175,22 +181,24 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 比如我们将slop置为1，然后搜索"is test"，虽然is test中间省略了一个词语"a"，但是在slop为1的情况下是可以容忍你中间省略一个词语的，也可以搜索出来结果。以此类推，slop为2就可以省略两个词语了。大家可以根据自己的实际情况进行调整。
 
 另外我们可以发现，如果在搜索时添加了辅助参数（比如slop）我们搜索格式的层级要往下扩展一层，之前的
 
 "bookName":"my test"
 要改为：
-
+```
 "bookName":{
     "query":"is test",
     "slop":1
 }
+```
 我们注意一下就好了。
 
 ### 2.3 multi_match查询
 有了前面的基础，multi_match比较好理解。实际上就是可以从多个字段中去寻找我们要查找的query：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -211,9 +219,10 @@ GET http://ip:prot/textbook/_search
         "num": 20
     }
 }
+```
 ### 2.4 term查询
 term查询也是比较常用的一种查询方式，它和match的唯一区别就是match需要对query进行分词，而term是不会进行分词的，它会直接拿query整体和原文进行匹配。所以不理解的小伙伴使用起来可能会非常奇怪：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -232,9 +241,10 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 ### 2.5 terms查询
 terms查询事实上就是多个term查询取一个交集，也就是要满足多个term查询条件匹配出来的结果才可以查到，所以是比单纯的term条件更为严格了：
-
+```
 GET http://ip:prot/textbook/_search
 {
   "query": {
@@ -264,11 +274,12 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 ### 2.6 fuzzy查询
 fuzzy是ES里面的模糊搜索，它可以借助term查询来进行理解。fuzzy和term一样，也不会将query进行分词，但是不同的是它在进行匹配时可以容忍你的词语拼写有错误，至于容忍度如何，是根据参数fuzziness决定的。fuzziness默认是2，也就是在默认情况下，fuzzy查询容忍你有两个字符及以下的拼写错误。即如果你要匹配的词语为test，但是你的query是text，那也可以匹配到。这里无论是错写多写还是少写都是计算在内的。我们同样还是举例说明。
 
 对于索引数据：
-
+```
 {
     "_index": "textbook",
     "_id": "kIwXeYQB8iTYJNkI986Y",
@@ -303,6 +314,7 @@ GET http://ip:prot/textbook/_search
     }
   }
 }
+```
 在容忍度为1的情况下，如果你想查texts就查不到结果了。
 
 ### 2.7 range查询
@@ -343,7 +355,7 @@ must：代表且的关系，也就是必须要满足该条件
 should：代表或的关系，代表符合该条件就可以被查出来
 must_not：代表非的关系，也就是要求不能是符合该条件的数据才能被查出来
 例如有这样一个查询：
-
+```
 GET http://ip:prot/textbook/_search
 {
     "query":{
@@ -366,11 +378,12 @@ GET http://ip:prot/textbook/_search
         }
     }
 }
+```
 这里就要求must里面的match是必须要符合的，但是should里面的两个条件就可以符合一条即可。
 
 ### 2.9 排序和分页
 排序和分页也是建立在上述的那些搜索之上的。排序和分页的条件是和query平级去写的，我们一个一个来看。先举个例子：
-
+```
 GET http://ip:prot/textbook/_search
 {
     "query":{
@@ -386,6 +399,7 @@ GET http://ip:prot/textbook/_search
         }
     }
 }
+```
 这里关于分页的语句是：
 
 "from":0,
@@ -400,5 +414,3 @@ GET http://ip:prot/textbook/_search
     }
 }
 它需要指定一个字段，然后根据这个字段进行升序或降序。这里我们根据num来进行降序排序，如果想升序就把order的值改为asc就好了。
-
-
